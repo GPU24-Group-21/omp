@@ -1,5 +1,6 @@
 build:
-	@g++ -o ljp_omp main.cpp -std=c++11 -fopenmp -O3
+	@g++ -o ljp main.cpp -std=c++11 -fopenmp -O3
+	@g++ -o validator validator.cpp -std=c++11
 
 clean:
 	@echo "Cleaning..."
@@ -12,6 +13,10 @@ run:
 diff-in:
 	@diff -w m.in mols.in
 
-all: build run
+validate:
+	@chmod +x validate.sh
+	@./validate.sh
 
-.PHONY: build clean run diff-in all
+all: build run validate
+
+.PHONY: build clean run diff-in all validate
