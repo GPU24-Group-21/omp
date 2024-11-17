@@ -5,8 +5,8 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <string>
 #include <omp.h>
+#include <string>
 
 using namespace std;
 
@@ -31,7 +31,7 @@ struct PropertiesData {
 // Constants
 Config config;
 
-bool debug = false;
+bool debug = true;
 bool outfile = false;
 
 uint32_t RAND_SEED_P = 17;
@@ -155,7 +155,7 @@ void readMoo(const string &filename, long N, Molecule *molecules) {
 }
 
 // Output result
-void outputResult(const string &filename, const int n,
+void outputResult(const string &filename, const unsigned long n,
                   const Molecule *molecules, const int step,
                   const double dTime) {
   ofstream file;
@@ -182,8 +182,8 @@ void outputResult(const string &filename, const int n,
   }
 }
 
-void outputMolInitData(const int n, const Molecule *molecules, const float rCut,
-                       float region[2], const float velMag) {
+void outputMolInitData(const unsigned long n, const Molecule *molecules,
+                       const float rCut, float region[2], const float velMag) {
   ofstream file;
   file.open("mols.in");
   file << setprecision(5) << fixed;
@@ -211,7 +211,8 @@ void toroidal(float &x, float &y, const float region[2]) {
     y -= region[1];
 }
 
-void leapfrog(const int n, Molecule *mols, const bool pre, const float deltaT) {
+void leapfrog(const unsigned long n, Molecule *mols, const bool pre,
+              const float deltaT) {
   for (int i = 0; i < n; i++) {
     // v(t + Δt/2) = v(t) + (Δt/2)a(t)
     mols[i].vel[0] += 0.5 * deltaT * mols[i].acc[0];
@@ -230,7 +231,29 @@ void leapfrog(const int n, Molecule *mols, const bool pre, const float deltaT) {
   }
 }
 
-void evaluateForce(const int n, Molecule *mols, double &uSum, double &virSum) {
+void leapfrog_omp(const unsigned long n, Molecule *mols, const bool pre,
+                  const float deltaT) {
+#pragma omp parallel for schedule(dynamic)
+  for (int i = 0; i < n; i++) {
+    // v(t + Δt/2) = v(t) + (Δt/2)a(t)
+    mols[i].vel[0] += 0.5 * deltaT * mols[i].acc[0];
+    mols[i].vel[1] += 0.5 * deltaT * mols[i].acc[1];
+
+    if (pre) {
+      // r(t + Δt) = r(t) + Δt v(t + Δt/2)
+      mols[i].pos[0] += deltaT * mols[i].vel[0];
+      mols[i].pos[1] += deltaT * mols[i].vel[1];
+
+      toroidal(mols[i].pos[0], mols[i].pos[1], region);
+
+      mols[i].acc[0] = 0;
+      mols[i].acc[1] = 0;
+    }
+  }
+}
+
+void evaluateForce(const unsigned long n, Molecule *mols, double &uSum,
+                   double &virSum) {
   for (size_t i = 0; i < n - 1; i++) {
     for (size_t j = i + 1; j < n; j++) {
       // Make DeltaRij: (sum of squared RJ1-RJ2)
@@ -258,37 +281,42 @@ void evaluateForce(const int n, Molecule *mols, double &uSum, double &virSum) {
   }
 }
 
-void evaluateProperties(const int n, const Molecule *mols, const double &uSum,
-                        const double &virSum) {
+void evaluateForce_omp(const unsigned long n, Molecule *mols, double &uSum,
+                       double &virSum) {
+#pragma omp parallel for reduction(+ : uSum, virSum) schedule(dynamic)
+  for (size_t i = 0; i < n - 1; i++) {
+    for (size_t j = i + 1; j < n; j++) {
+      // Make DeltaRij: (sum of squared RJ1-RJ2)
+      float dr[2] = {mols[i].pos[0] - mols[j].pos[0],
+                     mols[i].pos[1] - mols[j].pos[1]};
+      toroidal(dr[0], dr[1], region);
+      const double rr = dr[0] * dr[0] + dr[1] * dr[1];
 
-  vSum[0] = 0;
-  vSum[1] = 0;
+      // case dr2 < Rc^2
+      if (rr < rCut * rCut) {
+        const double r = sqrt(rr);
+        const double fcVal = 48.0 * EPSILON * pow(SIGMA, 12) / pow(r, 13) -
+                             24.0 * EPSILON * pow(SIGMA, 6) / pow(r, 7);
+        // update the acc
+#pragma omp atomic
+        mols[i].acc[0] += fcVal * dr[0];
+#pragma omp atomic
+        mols[i].acc[1] += fcVal * dr[1];
+#pragma omp atomic
+        mols[j].acc[0] -= fcVal * dr[0];
+#pragma omp atomic
+        mols[j].acc[1] -= fcVal * dr[1];
 
-  double vvSum = 0;
-
-  for (int i = 0; i < n; i++) {
-    vSum[0] += mols[i].vel[0];
-    vSum[1] += mols[i].vel[1];
-    vvSum += mols[i].vel[0] * mols[i].vel[0] + mols[i].vel[1] * mols[i].vel[1];
+        // The completed Lennard-Jones.
+        uSum += 4.0 * EPSILON * pow(SIGMA / r, 12) / r - pow(SIGMA / r, 6);
+        virSum += fcVal * rr;
+      }
+    }
   }
-
-  const double ke = 0.5 * vvSum / n;
-
-  const double energy = ke + uSum / n;
-  const double p = config.density * (vvSum + virSum) / (n * 2);
-
-  keSum += ke;
-  totalEnergy += energy;
-  pressure += p;
-
-  keSum2 += ke * ke;
-  totalEnergy2 += energy * energy;
-  pressure2 += p * p;
 }
 
-void stepSummary(const int n, const int step, const double dTime) {
-  // average and standard deviation of kinetic energy, total energy, and
-  // pressure
+void stepSummary(const unsigned long n, const int step, const double dTime) {
+  // cal avg and std of kinetic energy, total energy, and pressure
   double keAvg = keSum / config.stepAvg;
   double totalAvg = totalEnergy / config.stepAvg;
   double pressureAvg = pressure / config.stepAvg;
@@ -312,7 +340,39 @@ void stepSummary(const int n, const int step, const double dTime) {
   pressure2 = 0;
 }
 
-void launchSequentail(int N, Molecule *mols) {
+void evaluateProperties(const unsigned long n, const Molecule *mols,
+                        const double &uSum, const double &virSum, int step,
+                        double dTime, bool summary) {
+
+  vSum[0] = 0;
+  vSum[1] = 0;
+
+  double vvSum = 0;
+
+  for (int i = 0; i < n; i++) {
+    vSum[0] += mols[i].vel[0];
+    vSum[1] += mols[i].vel[1];
+    vvSum += mols[i].vel[0] * mols[i].vel[0] + mols[i].vel[1] * mols[i].vel[1];
+  }
+
+  const double ke = 0.5 * vvSum / n;
+  const double energy = ke + uSum / n;
+  const double p = config.density * (vvSum + virSum) / (n * 2);
+
+  keSum += ke;
+  totalEnergy += energy;
+  pressure += p;
+
+  keSum2 += ke * ke;
+  totalEnergy2 += energy * energy;
+  pressure2 += p * p;
+
+  if (summary) {
+    stepSummary(n, step, dTime);
+  }
+}
+
+void launchSequentail(unsigned long N, Molecule *mols) {
   auto start_time = chrono::high_resolution_clock::now();
 
   int step = 0;
@@ -321,15 +381,11 @@ void launchSequentail(int N, Molecule *mols) {
     const double deltaT = static_cast<double>(step) * config.deltaT;
     double uSum = 0;
     double virSum = 0;
-
     leapfrog(N, mols, true, config.deltaT);
-    boundaryCondition(N, mols);
     evaluateForce(N, mols, uSum, virSum);
     leapfrog(N, mols, false, config.deltaT);
-    evaluateProperties(N, mols, uSum, virSum);
-    if (config.stepAvg > 0 && step % config.stepAvg == 0) {
-      stepSummary(N, step, deltaT);
-    }
+    evaluateProperties(N, mols, uSum, virSum, step, deltaT,
+                       config.stepAvg > 0 && step % config.stepAvg == 0);
     // output the result
     if (outfile) {
       outputResult("output/" + to_string(step - 1) + ".out", N, mols, step - 1,
@@ -340,11 +396,11 @@ void launchSequentail(int N, Molecule *mols) {
   auto end_time = chrono::high_resolution_clock::now();
   auto duration =
       chrono::duration_cast<chrono::microseconds>(end_time - start_time);
-  cout << "[CPU Time] " << duration.count() << "ms - " << fixed
+  cout << "[Seq Time] " << duration.count() << "ms - " << fixed
        << setprecision(4) << duration.count() / 1000000.0 << "s" << endl;
 }
 
-void launchOMP(int N, Molecule *mols) {
+void launchOMP(unsigned long N, Molecule *mols) {
   auto start_time = chrono::high_resolution_clock::now();
   int step = 0;
   while (step < config.stepLimit) {
@@ -353,13 +409,11 @@ void launchOMP(int N, Molecule *mols) {
     double uSum = 0;
     double virSum = 0;
 
-    leapfrog(N, mols, true, config.deltaT);
-    evaluateForce(N, mols, uSum, virSum);
-    leapfrog(N, mols, false, config.deltaT);
-    evaluateProperties(N, mols, uSum, virSum);
-    if (config.stepAvg > 0 && step % config.stepAvg == 0) {
-      stepSummary(N, step, deltaT);
-    }
+    leapfrog_omp(N, mols, true, config.deltaT);
+    evaluateForce_omp(N, mols, uSum, virSum);
+    leapfrog_omp(N, mols, false, config.deltaT);
+    evaluateProperties(N, mols, uSum, virSum, step, deltaT,
+                       config.stepAvg > 0 && step % config.stepAvg == 0);
     if (outfile) {
       outputResult("output/" + to_string(step - 1) + ".out", N, mols, step - 1,
                    config.deltaT);
@@ -369,14 +423,15 @@ void launchOMP(int N, Molecule *mols) {
   auto end_time = chrono::high_resolution_clock::now();
   auto duration =
       chrono::duration_cast<chrono::microseconds>(end_time - start_time);
-  cout << "[CPU Time] " << duration.count() << "ms - " << fixed
+  cout << "[OMP Time] " << duration.count() << "ms - " << fixed
        << setprecision(4) << duration.count() / 1000000.0 << "s" << endl;
 }
 
 /*
   Validate the result
 */
-void validate(const int N, const Molecule *mols, const Molecule *mols2) {
+void validate(const unsigned long N, const Molecule *mols,
+              const Molecule *mols2) {
   bool error = false;
   for (int i = 0; i < N; i++) {
     for (int j = 0; j < 2; j++) {
@@ -400,7 +455,6 @@ void validate(const int N, const Molecule *mols, const Molecule *mols2) {
       }
     }
   }
-
   if (!error) {
     cout << "Validation passed" << endl;
   }
@@ -418,16 +472,17 @@ int main(const int argc, char *argv[]) {
 
   const string filename = argv[1];
   readConfig(filename);
-  system("mkdir -p output");
-
-  const int mSize = config.initUcell_x * config.initUcell_y;
+  const unsigned long mSize = config.initUcell_x * config.initUcell_y;
   Molecule molecules_c[mSize], molecules_o[mSize];
+  cout << "=========== Init f ===========" << endl;
   cout << "Size: " << config.initUcell_x << "x" << config.initUcell_y << "("
        << mSize << " mols)" << endl;
   outfile = atoi(argv[2]);
+  cout << "Output: " << (outfile ? "Yes" : "No") << endl;
   const int mode = atoi(argv[3]);
+  cout << "Mode: " << (mode ? "OMP" : "Sequential") << endl;
   rCut = pow(2.0, 1.0 / 6.0 * SIGMA);
-  
+
   // Region size
   region[0] = 1.0 / sqrt(config.density) * config.initUcell_x;
   region[1] = 1.0 / sqrt(config.density) * config.initUcell_y;
@@ -445,8 +500,8 @@ int main(const int argc, char *argv[]) {
   const double gap[2] = {region[0] / config.initUcell_x,
                          region[1] / config.initUcell_y};
 
-  for (int y = 0; y < config.initUcell_x; y++) {
-    for (int x = 0; x < config.initUcell_y; x++) {
+  for (unsigned long y = 0; y < config.initUcell_x; y++) {
+    for (unsigned long x = 0; x < config.initUcell_y; x++) {
       Molecule m;
       // assign molecule id
       m.id = y * config.initUcell_y + x;
@@ -472,10 +527,9 @@ int main(const int argc, char *argv[]) {
     }
   }
 
-  for (int i = 0; i < mSize; i++) {
+  for (unsigned long i = 0; i < mSize; i++) {
     molecules_c[i].vel[0] -= vSum[0] / mSize;
     molecules_c[i].vel[1] -= vSum[1] / mSize;
-
     molecules_o[i].vel[0] -= vSum[0] / mSize;
     molecules_o[i].vel[1] -= vSum[1] / mSize;
   }
@@ -483,6 +537,8 @@ int main(const int argc, char *argv[]) {
   if (outfile) {
     outputMolInitData(mSize, molecules_c, rCut, region, velMag);
   }
+
+  cout << "=========== Init Done ===========" << endl;
 
   cout << "=========== Sequential Version ===========" << endl;
   // print the header
@@ -496,7 +552,7 @@ int main(const int argc, char *argv[]) {
       << "Step\tTime\t\tvSum\t\tE.Avg\t\tE.Std\t\tK.Avg\t\tK.Std\t\tP.Avg\t\tP."
          "Std"
       << endl;
-  launchKernel(mSize, molecules_o);
+  launchOMP(mSize, molecules_o);
 
   // validate the result
   cout << "=========== Validation ===========" << endl;
