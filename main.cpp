@@ -30,10 +30,7 @@ struct PropertiesData {
 
 // Constants
 Config config;
-
 bool debug = false;
-bool outfile = false;
-
 uint32_t RAND_SEED_P = 17;
 
 // Statistical variables
@@ -438,10 +435,6 @@ int main(const int argc, char *argv[]) {
   for (int i = 0; i < mSize; i++) {
     molecules[i].vel[0] -= vSum[0] / mSize;
     molecules[i].vel[1] -= vSum[1] / mSize;
-  }
-
-  if (outfile) {
-    outputMolInitData(mSize, molecules, rCut, region, velMag);
   }
 
   if (mode == 0) {
