@@ -4,7 +4,7 @@ build:
 
 clean:
 	@echo "Cleaning..."
-	@rm -f ljp*
+	@rm -f ljp* validator
 	@rm -rf output
 
 run:
