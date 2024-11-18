@@ -5,13 +5,19 @@ build:
 clean:
 	@echo "Cleaning..."
 	@rm -f ljp*
+	@rm -rf output
 
 run:
 	@chmod +x run.sh
 	@./run.sh
 
-diff-in:
-	@diff -w m.in mols.in
+run-serial:
+	@chmod +x run.sh
+	@./run.sh -c
+
+run-omp:
+	@chmod +x run.sh
+	@./run.sh -o
 
 validate:
 	@chmod +x validate.sh
@@ -19,4 +25,4 @@ validate:
 
 all: build run validate
 
-.PHONY: build clean run diff-in all validate
+.PHONY: build clean run all validate run-serial run-omp
