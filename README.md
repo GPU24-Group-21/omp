@@ -28,9 +28,8 @@ The configuration file is `config.in` which contains the following parameters:
 ```
 deltaT  0.005 // time step
 density	0.8 // density
-stepAvg 10 // average steps
-stepEquil   0 // equil steps
-stepLimit   100 // total steps
+stepAvg 10 // average steps to output the summary report, reduce this may speed up the simulation
+stepLimit   100 // total steps to run
 temperature 1.0 // temperature
 ```
 

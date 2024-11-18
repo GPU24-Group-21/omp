@@ -86,8 +86,6 @@ void readConfig(const string &filename) {
   file >> config.density;
   readToken(file, "stepAvg");
   file >> config.stepAvg;
-  readToken(file, "stepEquil");
-  file >> config.stepEquil;
   readToken(file, "stepLimit");
   file >> config.stepLimit;
   readToken(file, "temperature");
@@ -98,7 +96,6 @@ void readConfig(const string &filename) {
     cout << "  deltaT: " << config.deltaT << endl;
     cout << "  density: " << config.density << endl;
     cout << "  stepAvg: " << config.stepAvg << endl;
-    cout << "  stepEquil: " << config.stepEquil << endl;
     cout << "  stepLimit: " << config.stepLimit << endl;
     cout << "  temperature: " << config.temperature << endl;
   }
