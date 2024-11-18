@@ -16,7 +16,7 @@ clear
 
 # read the arguments -c for cpu, -o for omp if not, run both
 
-series="10 20 40 80 160 320 640"
+series="10 20 40 80 100 200 300 400 500"
 
 if [ "$1" == "-c" ]; then
 echo "----------------Run Series Verion----------------"
