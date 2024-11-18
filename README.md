@@ -28,8 +28,6 @@ The configuration file is `config.in` which contains the following parameters:
 ```
 deltaT  0.005 // time step
 density	0.8 // density
-initUcell_x	20 // default cell size x (overwritten by input size)
-initUcell_y	20 // default cell size y (overwritten by input size)
 stepAvg 10 // average steps
 stepEquil   0 // equil steps
 stepLimit   100 // total steps

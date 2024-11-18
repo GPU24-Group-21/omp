@@ -10,8 +10,6 @@
 struct Config {
   float deltaT = 0;
   float density = 0;
-  int initUcell_x = 0;
-  int initUcell_y = 0;
   int stepAvg = 0;
   int stepEquil = 0;
   int stepLimit = 0;

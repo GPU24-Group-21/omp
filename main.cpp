@@ -87,10 +87,6 @@ void readConfig(const string &filename) {
   file >> config.deltaT;
   readToken(file, "density");
   file >> config.density;
-  readToken(file, "initUcell_x");
-  file >> config.initUcell_x;
-  readToken(file, "initUcell_y");
-  file >> config.initUcell_y;
   readToken(file, "stepAvg");
   file >> config.stepAvg;
   readToken(file, "stepEquil");
@@ -104,8 +100,6 @@ void readConfig(const string &filename) {
     cout << "=========== Config ===========" << endl;
     cout << "  deltaT: " << config.deltaT << endl;
     cout << "  density: " << config.density << endl;
-    cout << "  initUcell_x: " << config.initUcell_x << endl;
-    cout << "  initUcell_y: " << config.initUcell_y << endl;
     cout << "  stepAvg: " << config.stepAvg << endl;
     cout << "  stepEquil: " << config.stepEquil << endl;
     cout << "  stepLimit: " << config.stepLimit << endl;
@@ -329,7 +323,7 @@ void evaluateProperties(const int n, const Molecule *mols, const double &uSum,
   }
 }
 
-void launchSequentail(int N, Molecule *mols) {
+void launchSequentail(int N, Molecule *mols, const int size) {
   auto start_time = chrono::high_resolution_clock::now();
 
   int step = 0;
@@ -343,8 +337,8 @@ void launchSequentail(int N, Molecule *mols) {
     leapfrog(N, mols, false, config.deltaT);
     evaluateProperties(N, mols, uSum, virSum, step, deltaT,
                        config.stepAvg > 0 && step % config.stepAvg == 0);
-    outputResult("output/cpu/" + to_string(config.initUcell_x) + "/" +
-                     to_string(step - 1) + ".out",
+    outputResult("output/cpu/" + to_string(size) + "/" + to_string(step - 1) +
+                     ".out",
                  N, mols, step - 1, config.deltaT);
   }
 
@@ -355,7 +349,7 @@ void launchSequentail(int N, Molecule *mols) {
        << setprecision(4) << duration.count() / 1000000.0 << "s" << endl;
 }
 
-void launchOMP(int N, Molecule *mols) {
+void launchOMP(int N, Molecule *mols, const int size) {
   auto start_time = chrono::high_resolution_clock::now();
   int step = 0;
   while (step < config.stepLimit) {
@@ -369,8 +363,8 @@ void launchOMP(int N, Molecule *mols) {
     leapfrog_omp(N, mols, false, config.deltaT);
     evaluateProperties(N, mols, uSum, virSum, step, deltaT,
                        config.stepAvg > 0 && step % config.stepAvg == 0);
-    outputResult("output/omp/" + to_string(config.initUcell_x) + "/" +
-                     to_string(step - 1) + ".out",
+    outputResult("output/omp/" + to_string(size) + "/" + to_string(step - 1) +
+                     ".out",
                  N, mols, step - 1, config.deltaT);
   }
 
@@ -395,14 +389,13 @@ int main(const int argc, char *argv[]) {
   const int size = atoi(argv[2]);
   const int mode = atoi(argv[3]);
   readConfig(filename);
-  config.initUcell_x = config.initUcell_y = size;
-  const int mSize = config.initUcell_x * config.initUcell_y;
+  const int mSize = size * size;
   Molecule molecules[mSize];
   rCut = pow(2.0, 1.0 / 6.0 * SIGMA);
 
   // Region size
-  region[0] = 1.0 / sqrt(config.density) * config.initUcell_x;
-  region[1] = 1.0 / sqrt(config.density) * config.initUcell_y;
+  region[0] = 1.0 / sqrt(config.density) * size;
+  region[1] = 1.0 / sqrt(config.density) * size;
 
   // Velocity magnitude
   velMag = sqrt(NDIM * (1.0 - 1.0 / mSize) * config.temperature);
@@ -414,14 +407,13 @@ int main(const int argc, char *argv[]) {
     cout << "  velMag: " << velMag << endl;
   }
 
-  const double gap[2] = {region[0] / config.initUcell_x,
-                         region[1] / config.initUcell_y};
+  const double gap[2] = {region[0] / size, region[1] / size};
 
-  for (int y = 0; y < config.initUcell_x; y++) {
-    for (int x = 0; x < config.initUcell_y; x++) {
+  for (int y = 0; y < size; y++) {
+    for (int x = 0; x < size; x++) {
       Molecule m;
       // assign molecule id
-      m.id = y * config.initUcell_y + x;
+      m.id = y * size + x;
 
       // assign position
       m.pos[0] = (x + 0.5) * gap[0] + region[0] * -0.5;
@@ -439,7 +431,7 @@ int main(const int argc, char *argv[]) {
       m.multiple_acc(0);
 
       // add to list
-      molecules[y * config.initUcell_y + x] = m;
+      molecules[y * size + x] = m;
     }
   }
 
@@ -458,14 +450,14 @@ int main(const int argc, char *argv[]) {
             "Avg\t\tP."
             "Std"
          << endl;
-    launchSequentail(mSize, molecules);
+    launchSequentail(mSize, molecules, size);
   } else {
     cout << "=========== OMP Version ===========" << endl;
     cout << "Step\tTime\t\tvSum\t\tE.Avg\t\tE.Std\t\tK.Avg\t\tK.Std\t\tP."
             "Avg\t\tP."
             "Std"
          << endl;
-    launchOMP(mSize, molecules);
+    launchOMP(mSize, molecules, size);
   }
   return 0;
 }
