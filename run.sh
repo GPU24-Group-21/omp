@@ -24,7 +24,6 @@ if [ "$1" == "-v" ]; then
     verbose=1
 fi
 
-
 if [ "$1" == "-c" ]; then
 echo "----------------Run Series Verion----------------"
 # run cpu version

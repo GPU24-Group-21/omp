@@ -1,6 +1,6 @@
 build:
-	@g++ -o ljp main.cpp -std=c++11 -fopenmp -O3
-	@g++ -o validator validator.cpp -std=c++11
+	@g++ -o ljp main.cpp -std=c++17 -fopenmp -O3
+	@g++ -o validator validator.cpp -std=c++17
 
 clean:
 	@echo "Cleaning..."

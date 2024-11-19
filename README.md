@@ -20,7 +20,7 @@ $ make run-omp
 $ make run-output
 
 # or you can run the prog directly, adjest the size
-$ ./ljp config.in [size] [0: cpu, 1: omp] [0: not output step file, 1: output]
+$ ./ljp config.in [size] [0: cpu, 1: omp] [0: not output step file, 1: output (optional)]
 
 # to validate the output
 $ make validate
@@ -36,6 +36,22 @@ density	0.8      // density
 stepAvg 10       // average steps to output the summary report, reduce this will speed up the simulation
 stepLimit   100  // total steps to loop
 temperature 1.0  // temperature
+```
+
+The `run.sh` have a series of test cases to run the program with different size and different version.
+We currenlty set the max size to 400 which is 160000 atoms, in cpu version, it will take a long time to run(hour unit).
+You can change the size in the `run.sh` to test the performance of the program.
+
+or you can run the program directly with the following command:
+
+```bash
+$ ./ljp config.in 100 0 // run the cpu version with 100 atoms and no output step file
+
+$ ./ljp config.in 100 1 // run the omp version with 100 atoms and output step file
+
+$ ./ljp config.in 100 0 1 // run the cpu version with 100 atoms and output step file
+
+$ ./ljp config.in 100 1 1 // run the omp version with 100 atoms and output step file
 ```
 
 ## Output
