@@ -6,12 +6,18 @@ We want compared this wtih cuda to see the performance difference.
 ## How to run
 
 ```bash
-# automatic run
+# build the program
+$ make
+
+# automatic build and run (will run the faster mode, no output step file)
 $ make all
 
 # or you can only run serial or omp version
 $ make run-serial
 $ make run-omp
+
+# if you want to output the step file, you can run the following command to run both serial and omp version
+$ make run-output
 
 # or you can run the prog directly, adjest the size
 $ ./ljp config.in [size] [0: cpu, 1: omp] [0: not output step file, 1: output]
@@ -34,9 +40,10 @@ temperature 1.0  // temperature
 
 ## Output
 
-All the ouput files are stored in the `output` directory.
+All the ouput files are stored in the `output` directory. Each will group by cpu or omp version and the size of the system.
+Each output file will contain the position of each atom in each step and the energy, temperature, pressure, and timing of each step.
 
-Structures:
+Output folder Structures:
 ```
 output
 |── cpu
