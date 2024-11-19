@@ -11,6 +11,10 @@ run:
 	@chmod +x run.sh
 	@./run.sh
 
+run-output:
+	@chmod +x run.sh
+	@./run.sh -v
+
 run-serial:
 	@chmod +x run.sh
 	@./run.sh -c
@@ -23,6 +27,6 @@ validate:
 	@chmod +x validate.sh
 	@./validate.sh
 
-all: build run validate
+all: build run
 
-.PHONY: build clean run all validate run-serial run-omp
+.PHONY: build clean run all validate run-serial run-omp run-output

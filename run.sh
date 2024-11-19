@@ -16,7 +16,14 @@ clear
 
 # read the arguments -c for cpu, -o for omp if not, run both
 
-series="10 20 40 80 100 200 300 400 500"
+series="10 20 40 80 100 200 400"
+
+verbose=0
+
+if [ "$1" == "-v" ]; then
+    verbose=1
+fi
+
 
 if [ "$1" == "-c" ]; then
 echo "----------------Run Series Verion----------------"
@@ -26,8 +33,9 @@ for size in $series; do
     mkdir -p output/cpu/$size
     rm -rf output/cpu/$size/*
     # run cpu version
-    echo "Running CPU version($size x $size)"
-    $prog $infile $size 0 > "output/cpu/$size/final"
+    echo -n "Running CPU version($size x $size)"
+    $prog $infile $size 0 $verbose > "output/cpu/$size/final"
+    echo " - $(grep '^\[Seq Time\]' output/cpu/$size/final)"
 done
 elif [ "$1" == "-o" ]; then
 # run omp version
@@ -37,8 +45,9 @@ for size in $series; do
     mkdir -p output/omp/$size
     rm -rf output/omp/$size/*
     # run cpu version
-    echo "Running OMP version($size x $size)"
-    $prog $infile $size 1 > "output/omp/$size/final"
+    echo -n "Running OMP version($size x $size)"
+    $prog $infile $size 1 $verbose > "output/omp/$size/final"
+    echo " - $(grep '^\[OMP Time\]' output/omp/$size/final)"
 done
 else
 echo "----------------Run Series Verion----------------"
@@ -48,8 +57,9 @@ for size in $series; do
     mkdir -p output/cpu/$size
     rm -rf output/cpu/$size/*
     # run cpu version
-    echo "Running CPU version($size x $size)"
-    $prog $infile $size 0 > "output/cpu/$size/final"
+    echo -n "Running CPU version($size x $size)"
+    $prog $infile $size 0 $verbose > "output/cpu/$size/final"
+    echo " - $(grep '^\[Seq Time\]' output/cpu/$size/final)"
 done
 # run omp version
 echo "----------------Run OMP Verion----------------"
@@ -58,7 +68,8 @@ for size in $series; do
     mkdir -p output/omp/$size
     rm -rf output/omp/$size/*
     # run cpu version
-    echo "Running OMP version($size x $size)"
-    $prog $infile $size 1 > "output/omp/$size/final"
+    echo -n "Running OMP version($size x $size)"
+    $prog $infile $size 1 $verbose > "output/omp/$size/final"
+    echo " - $(grep '^\[OMP Time\]' output/omp/$size/final)"
 done
 fi

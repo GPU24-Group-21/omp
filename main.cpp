@@ -30,7 +30,7 @@ struct PropertiesData {
 
 // Constants
 Config config;
-bool debug = false;
+bool verbose = false;
 uint32_t RAND_SEED_P = 17;
 
 // Statistical variables
@@ -90,15 +90,6 @@ void readConfig(const string &filename) {
   file >> config.stepLimit;
   readToken(file, "temperature");
   file >> config.temperature;
-
-  if (debug) {
-    cout << "=========== Config ===========" << endl;
-    cout << "  deltaT: " << config.deltaT << endl;
-    cout << "  density: " << config.density << endl;
-    cout << "  stepAvg: " << config.stepAvg << endl;
-    cout << "  stepLimit: " << config.stepLimit << endl;
-    cout << "  temperature: " << config.temperature << endl;
-  }
 }
 
 // Output result
@@ -115,8 +106,14 @@ void outputResult(const string &filename, const int n,
 
   file << "step " << to_string(step) << endl;
   file << "ts " << dTime << endl;
-  file << "====================" << endl;
   file << setprecision(5) << fixed;
+  file << "E " << totalEnergy << endl;
+  file << "KE " << keSum << endl;
+  file << "P " << pressure << endl;
+  file << "sE " << totalEnergy2 << endl;
+  file << "sKE " << keSum2 << endl;
+  file << "sP " << pressure2 << endl;
+  file << "====================" << endl;
   const int mark1 = n / 2 + n / 8;
   const int mark2 = n / 2 + n / 8 + 1;
   for (int i = 0; i < n; i++) {
@@ -130,9 +127,11 @@ void outputResult(const string &filename, const int n,
 }
 
 void outputMolInitData(const int n, const Molecule *molecules, const float rCut,
-                       float region[2], const float velMag) {
+                       float region[2], const float velMag, int size,
+                       bool omp) {
   ofstream file;
-  file.open("mols.in");
+  file.open(string("output/") + (omp ? "omp/" : "cpu/") + to_string(size) +
+            "/init");
   file << setprecision(5) << fixed;
   file << "rCut " << rCut << endl;
   file << "region " << region[0] << " " << region[1] << endl;
@@ -331,9 +330,10 @@ void launchSequentail(int N, Molecule *mols, const int size) {
     leapfrog(N, mols, false, config.deltaT);
     evaluateProperties(N, mols, uSum, virSum, step, deltaT,
                        config.stepAvg > 0 && step % config.stepAvg == 0);
-    outputResult("output/cpu/" + to_string(size) + "/" + to_string(step - 1) +
-                     ".out",
-                 N, mols, step - 1, config.deltaT);
+    if (verbose)
+      outputResult("output/cpu/" + to_string(size) + "/" + to_string(step - 1) +
+                       ".out",
+                   N, mols, step - 1, config.deltaT);
   }
 
   auto end_time = chrono::high_resolution_clock::now();
@@ -357,9 +357,11 @@ void launchOMP(int N, Molecule *mols, const int size) {
     leapfrog_omp(N, mols, false, config.deltaT);
     evaluateProperties(N, mols, uSum, virSum, step, deltaT,
                        config.stepAvg > 0 && step % config.stepAvg == 0);
-    outputResult("output/omp/" + to_string(size) + "/" + to_string(step - 1) +
-                     ".out",
-                 N, mols, step - 1, config.deltaT);
+
+    if (verbose)
+      outputResult("output/omp/" + to_string(size) + "/" + to_string(step - 1) +
+                       ".out",
+                   N, mols, step - 1, config.deltaT);
   }
 
   auto end_time = chrono::high_resolution_clock::now();
@@ -382,6 +384,11 @@ int main(const int argc, char *argv[]) {
   const string filename = argv[1];
   const int size = atoi(argv[2]);
   const int mode = atoi(argv[3]);
+
+  if (argc == 5) {
+    verbose = atoi(argv[4]);
+  }
+
   readConfig(filename);
   const int mSize = size * size;
   Molecule molecules[mSize];
@@ -393,14 +400,6 @@ int main(const int argc, char *argv[]) {
 
   // Velocity magnitude
   velMag = sqrt(NDIM * (1.0 - 1.0 / mSize) * config.temperature);
-
-  if (debug) {
-    cout << "=========== Random Init ===========" << endl;
-    cout << "  rCut: " << rCut << endl;
-    cout << "  region: " << region[0] << " " << region[1] << endl;
-    cout << "  velMag: " << velMag << endl;
-  }
-
   const double gap[2] = {region[0] / size, region[1] / size};
 
   for (int y = 0; y < size; y++) {
@@ -434,6 +433,8 @@ int main(const int argc, char *argv[]) {
     molecules[i].vel[1] -= vSum[1] / mSize;
   }
 
+  if (verbose)
+    outputMolInitData(mSize, molecules, rCut, region, velMag, size, mode == 1);
   if (mode == 0) {
     cout << "=========== Sequential Version ===========" << endl;
     cout << "Step\tTime\t\tvSum\t\tE.Avg\t\tE.Std\t\tK.Avg\t\tK.Std\t\tP."

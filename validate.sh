@@ -20,7 +20,6 @@ for cpu_folder in $output_folder/cpu/*; do
         echo "Missing corresponding omp folder for $cpu_folder"
         exit 1
     fi
-
     # check if the final output files exist in both cpu and omp folders
     if [ ! -f "$cpu_folder/final" ] || [ ! -f "$omp_folder/final" ]; then
         echo "Missing final output file in $cpu_folder or $omp_folder"
@@ -33,6 +32,7 @@ for cpu_folder in $output_folder/cpu/*; do
             echo "Missing corresponding omp file for $cpu_file"
             exit 1
         fi
+        
         # run the validation prog, if not exit with error code
         ./validator $cpu_file $omp_file
         if [ $? -ne 0 ]; then
