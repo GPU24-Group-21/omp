@@ -36,7 +36,21 @@ validate:
 	@./validate.sh
 
 all: build run
-
 all-output: build run-output
 
-.PHONY: build clean run all validate run-serial run-omp run-output run-serial-output run-omp-output all-output
+help:
+	@echo "Usage: make [target]"
+	@echo "Targets:"
+	@echo "  build: Compile the source code"
+	@echo "  clean: Remove the compiled files"
+	@echo "  run: Run the program"
+	@echo "  run-output: Run the program and output the result"
+	@echo "  run-serial: Run the program in serial mode"
+	@echo "  run-omp: Run the program in OpenMP mode"
+	@echo "  run-serial-output: Run the program in serial mode and output the result"
+	@echo "  run-omp-output: Run the program in OpenMP mode and output the result"
+	@echo "  validate: Validate the output"
+	@echo "  all: Compile and run the program"
+	@echo "  all-output: Compile and run the program and output the result"
+
+.PHONY: build clean run all validate run-serial run-omp run-output run-serial-output run-omp-output all-output help
