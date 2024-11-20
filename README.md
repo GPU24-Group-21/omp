@@ -7,28 +7,28 @@ We want compared this wtih cuda to see the performance difference.
 
 ```bash
 # build the program
-$ make
+make
 
 # automatic build and run (will run the faster mode, no output step file)
-$ make all
+make all
 
 # or you can only run serial or omp version
-$ make run-serial
-$ make run-omp
+make run-serial
+make run-omp
 
 # if you want to output the step file, you can run the following command to run both serial and omp version
-$ make run-output # run both serial and omp version with output step file
-$ make run-omp-output # run only omp version with output step file
-$ make run-serial-output # run only serial version with output step file
+make run-output # run both serial and omp version with output step file
+make run-omp-output # run only omp version with output step file
+make run-serial-output # run only serial version with output step file
 
 # or you can run the prog directly, adjest the size
-$ ./ljp config.in [size] [0: cpu, 1: omp] [0: not output step file, 1: output (optional)]
+./ljp config.in [size] [0: cpu, 1: omp] [0: not output step file, 1: output (optional)]
 
 # to validate the output
-$ make validate
+make validate
 
 # to clean the output
-$ make clean
+make clean
 ```
 
 ## Configuration
@@ -50,13 +50,13 @@ You can change the size in the `run.sh` to test the performance of the program.
 or you can run the program directly with the following command:
 
 ```bash
-$ ./ljp config.in 100 0 // run the cpu version with 100 atoms and no output step file
+./ljp config.in 100 0 // run the cpu version with 100 atoms and no output step file
 
-$ ./ljp config.in 100 1 // run the omp version with 100 atoms and output step file
+./ljp config.in 100 1 // run the omp version with 100 atoms and output step file
 
-$ ./ljp config.in 100 0 1 // run the cpu version with 100 atoms and output step file
+./ljp config.in 100 0 1 // run the cpu version with 100 atoms and output step file
 
-$ ./ljp config.in 100 1 1 // run the omp version with 100 atoms and output step file
+./ljp config.in 100 1 1 // run the omp version with 100 atoms and output step file
 ```
 
 ## Output
