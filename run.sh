@@ -17,14 +17,28 @@ clear
 # read the arguments -c for cpu, -o for omp if not, run both
 
 series="10 20 40 80 100 200 400"
-
+mode="a"
 verbose=0
+while getopts "cov" opt; do
+    case $opt in
+        c)
+            mode="c"
+            ;;
+        o)
+            mode="o"
+            ;;
+        v)
+            verbose=1
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            exit 1
+            ;;
+    esac
+done
 
-if [ "$1" == "-v" ]; then
-    verbose=1
-fi
 
-if [ "$1" == "-c" ]; then
+if [ $mode == "c" ]; then
 echo "----------------Run Series Verion----------------"
 # run cpu version
 for size in $series; do
@@ -36,7 +50,7 @@ for size in $series; do
     $prog $infile $size 0 $verbose > "output/cpu/$size/final"
     echo " - $(grep '^\[Seq Time\]' output/cpu/$size/final)"
 done
-elif [ "$1" == "-o" ]; then
+elif [ $mode == "o" ]; then
 # run omp version
 echo "----------------Run OMP Verion----------------"
 for size in $series; do

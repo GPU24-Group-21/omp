@@ -37,4 +37,6 @@ validate:
 
 all: build run
 
-.PHONY: build clean run all validate run-serial run-omp run-output run-serial-output run-omp-output
+all-output: build run-output
+
+.PHONY: build clean run all validate run-serial run-omp run-output run-serial-output run-omp-output all-output
