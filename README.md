@@ -17,13 +17,18 @@ $ make run-serial
 $ make run-omp
 
 # if you want to output the step file, you can run the following command to run both serial and omp version
-$ make run-output
+$ make run-output # run both serial and omp version with output step file
+$ make run-omp-output # run only omp version with output step file
+$ make run-serial-output # run only serial version with output step file
 
 # or you can run the prog directly, adjest the size
 $ ./ljp config.in [size] [0: cpu, 1: omp] [0: not output step file, 1: output (optional)]
 
 # to validate the output
 $ make validate
+
+# to clean the output
+$ make clean
 ```
 
 ## Configuration
